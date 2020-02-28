@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment to deploy resources to
+    AllowedValues:
+      - staging
+      - production
+
+Conditions:
+  IsProduction: !Equals [ !Ref Environment, production ]
+
+Globals:
+  Function:
+    Runtime: nodejs12.x
+    MemorySize: 128
+    Timeout: 5
+
+Resources:
+  BookEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'book-events-${Environment}'
+      Tags:
+        - Key: project
+          Value: my-project
+        - Key: environment
+          Value: !Ref Environment
+  
+  PutBookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'put-book-${Environment}'
+      CodeUri: ./src/put-book/
+      Handler: index.handler
+      AutoPublishAlias: !Ref Environment
+      DeploymentPreference:
+        Type: !If [IsProduction, Canary10Percent5Minutes, AllAtOnce]
+        Alarms:
+          - !Ref AliasErrorMetricGreaterThanZeroAlarm
+        Hooks:
+          PreTraffic: !Ref PreTrafficCheckFunction      
+      Environment:
+        Variables:
+          TABLE: !Ref BooksTable
+      Tags:
+        project: my-project
+        environment: !Ref Environment
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BooksTable
+        - SQSPollerPolicy:
+            QueueName: !Ref BookEventsQueue
+      Events:
+        NewBookEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt BookEventsQueue.Arn
+            BatchSize: 5
+            Enabled: true
+  
+  BooksTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: isbn
+        Type: String
+      TableName: !Sub 'books-${Environment}'
+      Tags:
+        project: my-project
+        environment: !Ref Environment
+      SSESpecification:
+        SSEEnabled: true
+
+  PreTrafficCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'CodeDeployHook_put-book-${Environment}-pre-traffic-check'
+      CodeUri: ./src/pre-traffic-check/
+      Handler: index.handler
+      Environment:
+        Variables:
+          TABLE: !Ref BooksTable
+          FN_NEW_VERSION: !Ref PutBookFunction.Version
+      Tags:
+        project: my-project
+        environment: !Ref Environment
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BooksTable
+        - Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - codedeploy:PutLifecycleEventHookExecutionStatus
+            Resource:
+              !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ServerlessDeploymentApplication}/*'
+        - Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource: !Ref PutBookFunction.Version
+
+  AliasErrorMetricGreaterThanZeroAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Lambda Function Error > 0
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: Resource
+          Value: !Sub '${PutBookFunction}:${Environment}'
+        - Name: FunctionName
+          Value: !Ref PutBookFunction
+      EvaluationPeriods: 2
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 0
+
+Outputs:
+  BookEventsQueueUrl:
+    Description: SQS queue url for new book events to be left in
+    Value: !Ref BookEventsQueue
+  BookEventsQueueArn:
+    Description: SQS queue ARN for new book events to be left in
+    Value: !GetAtt BookEventsQueue.Arn
+  PutBookFunctionArn:
+    Description: "Put book function ARN"
+    Value: !GetAtt PutBookFunction.Arn
+  PutBookFunctionIamRole:
+    Description: "IAM Role for Put Book function"
+    Value: !GetAtt PutBookFunctionRole.Arn
+  BooksTable:
+    Description: DynamoDB table where books are stored
+    Value: !Ref BooksTable
+  PreTrafficCheckFunctionArn:
+    Description: "Pre Traffic check function function ARN"
+    Value: !GetAtt PreTrafficCheckFunction.Arn
+  PreTrafficCheckFunctionIamRole:
+    Description: "IAM Role for Put Book Pre Traffic Check function"
+    Value: !GetAtt PreTrafficCheckFunctionRole.Arn

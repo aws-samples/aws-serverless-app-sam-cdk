@@ -1,0 +1,26 @@
+{
+  "version": 0.2,
+  "phases": {
+    "install": {
+      "runtime-versions": {
+        "nodejs": 12,
+        "docker": 18
+      },
+      "commands": [
+        "docker run -d -p 8000:8000 --name dynamodb amazon/dynamodb-local",
+        "aws dynamodb create-table --table-name $TABLE --attribute-definitions AttributeName=isbn,AttributeType=S --key-schema AttributeName=isbn,KeyType=HASH --endpoint-url http://localhost:8000 --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5"
+      ]
+    },
+    "pre_build": {
+      "commands": [
+        "cd src/put-book",
+        "npm install"
+      ]
+    },
+    "build": {
+      "commands": [
+        "npm run e2e-test"
+      ]
+    }
+  }
+}

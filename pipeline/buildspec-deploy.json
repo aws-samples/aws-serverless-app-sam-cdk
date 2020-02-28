@@ -1,0 +1,19 @@
+{
+  "version": "0.2",
+  "phases": {
+    "install": {
+      "runtime-versions": {
+        "python": "3.8"
+      },
+      "commands": [
+        "pip3 install --upgrade aws-sam-cli"
+      ]
+    },
+    "build": {
+      "commands": [
+        "aws s3 cp $ARTIFACTS_PATH ./template.yml",
+        "sam deploy --template-file template.yml --stack-name $STACK_NAME --parameter-overrides ParameterKey=Environment,ParameterValue=$ENVIRONMENT --capabilities CAPABILITY_IAM"
+      ]
+    }
+  }
+}

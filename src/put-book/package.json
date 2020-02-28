@@ -1,0 +1,22 @@
+{
+  "name": "aws-serverless-app-put-book",
+  "version": "1.0.0",
+  "description": "AWS Lambda function source code that inserts a book in a DynamoDB table",
+  "main": "index.js",
+  "scripts": {
+    "test": "TABLE=books mocha ./tests/unit/*.spec.js --recursive",
+    "e2e-test": "mocha ./tests/e2e/*.spec.js --recursive"
+  },
+  "author": "Amazon Web Services",
+  "license": "Apache 2.0",
+  "devDependencies": {
+    "aws-sdk": "^2.624.0",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^7.0.1",
+    "proxyquire": "^2.1.3",
+    "sinon": "^9.0.0",
+    "sinon-chai": "^3.5.0"
+  },
+  "dependencies": {}
+}
