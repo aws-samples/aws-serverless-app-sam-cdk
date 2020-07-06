@@ -11,14 +11,16 @@ export class PipelineStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const accountId = this.account;
+
     // Bucket for pipeline artifacts
     const pipelineArtifactBucket = new Bucket(this, 'CiCdPipelineArtifacts', {
-      bucketName: 'ci-cd-pipeline-artifacts',
+      bucketName: `ci-cd-pipeline-artifacts-${accountId}`,
       encryption: BucketEncryption.S3_MANAGED
     });
 
     const appArtifactBucket = new Bucket(this, 'AppArtifacts', {
-      bucketName: 'aws-serverless-app-artifacts',
+      bucketName: `aws-serverless-app-artifacts-${accountId}`,
       encryption: BucketEncryption.S3_MANAGED
     });
 
@@ -119,7 +121,7 @@ export class PipelineStack extends cdk.Stack {
       actionName: 'Deploy',
       input: sourceArtifacts,
       environmentVariables: {
-        STACK_NAME: {value: 'aws-sam-ci-cd-production'},
+        STACK_NAME: {value: 'aws-serverless-app-production'},
         ENVIRONMENT: {value: 'production'},
         ARTIFACTS_PATH: {value: buildAction.variable('ARTIFACTS_PATH')}
       },
