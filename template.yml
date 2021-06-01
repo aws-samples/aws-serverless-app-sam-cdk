@@ -23,6 +23,7 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub 'book-events-${Environment}'
+      KmsMasterKeyId: alias/aws/sqs
       Tags:
         - Key: project
           Value: my-project
