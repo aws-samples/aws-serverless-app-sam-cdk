@@ -2,6 +2,15 @@
   "name": "aws-serverless-app-put-book-pre-traffic-check",
   "version": "1.0.0",
   "main": "index.js",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
   "author": "Amazon Web Services",
-  "license": "Apache 2.0"
+  "license": "Apache 2.0",
+  "dependencies": {
+    "@aws-sdk/client-codedeploy": "^3.1069.0",
+    "@aws-sdk/client-dynamodb": "^3.1069.0",
+    "@aws-sdk/client-lambda": "^3.1069.0"
+  }
 }

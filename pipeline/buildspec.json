@@ -8,13 +8,14 @@
   "phases": {
     "install": {
       "runtime-versions": {
-        "python": 3.8,
-        "nodejs": 12
+        "python": 3.12,
+        "nodejs": 24
       },
       "commands": [
         "pip3 install --upgrade aws-sam-cli",
-        "npm install -g recursive-install",
-        "npm-recursive-install --skip-root"
+        "cd src/put-book && npm ci",
+        "cd ../pre-traffic-check && npm ci",
+        "cd ../.."
       ]
     },
     "pre_build": {
@@ -22,7 +23,7 @@
         "cd src/put-book",
         "npm test",
         "rm -rf tests",
-        "npm prune --production",
+        "npm prune --omit=dev",
         "cd ../.."
       ]
     },

@@ -1,18 +1,20 @@
-const sdk = require('aws-sdk');
+const { DynamoDBClient, PutItemCommand } = require('@aws-sdk/client-dynamodb');
 
 const ddbOptions = {
-    apiVersion: '2012-08-10'
+    region: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1'
 };
 
 if (process.env.AWS_SAM_LOCAL) {
-    ddbOptions.endpoint = new sdk.Endpoint('http://dynamodb:8000')
+    ddbOptions.endpoint = 'http://dynamodb:8000';
+    ddbOptions.credentials = { accessKeyId: 'local', secretAccessKey: 'local' };
 }
 
 if (process.env.E2E_TEST) {
-    ddbOptions.endpoint = new sdk.Endpoint('http://localhost:8000')
+    ddbOptions.endpoint = 'http://localhost:8000';
+    ddbOptions.credentials = { accessKeyId: 'local', secretAccessKey: 'local' };
 }
 
-const client = new sdk.DynamoDB(ddbOptions);
+const client = new DynamoDBClient(ddbOptions);
 const tableName = process.env.TABLE;
 
 exports.handler = async event => {
@@ -30,7 +32,7 @@ exports.handler = async event => {
                 reviews: {N: review.toString()}
             }
         };
-        await client.putItem(params).promise();
+        await client.send(new PutItemCommand(params));
         
         return;
     } catch (error) {

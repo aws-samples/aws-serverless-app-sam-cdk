@@ -14,7 +14,7 @@ Conditions:
 
 Globals:
   Function:
-    Runtime: nodejs12.x
+    Runtime: nodejs24.x
     MemorySize: 128
     Timeout: 5
 

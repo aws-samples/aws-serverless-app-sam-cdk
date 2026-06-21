@@ -1,39 +1,39 @@
-import * as cdk from '@aws-cdk/core';
-import * as codebuild from '@aws-cdk/aws-codebuild';
-import * as codepipeline from '@aws-cdk/aws-codepipeline';
-import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
-import * as ssm from '@aws-cdk/aws-ssm';
+import { SecretValue, Stack, StackProps } from 'aws-cdk-lib';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
+import * as codepipelineActions from 'aws-cdk-lib/aws-codepipeline-actions';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
+import { Construct } from 'constructs';
 
-import { CodeBuildAction, GitHubSourceAction, ManualApprovalAction } from '@aws-cdk/aws-codepipeline-actions';
-import { Bucket, BucketEncryption } from '@aws-cdk/aws-s3';
-
-export class PipelineStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+export class PipelineStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
     const accountId = this.account;
 
     // Bucket for pipeline artifacts
-    const pipelineArtifactBucket = new Bucket(this, 'CiCdPipelineArtifacts', {
+    const pipelineArtifactBucket = new s3.Bucket(this, 'CiCdPipelineArtifacts', {
       bucketName: `ci-cd-pipeline-artifacts-${accountId}`,
-      encryption: BucketEncryption.S3_MANAGED
+      encryption: s3.BucketEncryption.S3_MANAGED
     });
 
-    const appArtifactBucket = new Bucket(this, 'AppArtifacts', {
+    const appArtifactBucket = new s3.Bucket(this, 'AppArtifacts', {
       bucketName: `aws-serverless-app-artifacts-${accountId}`,
-      encryption: BucketEncryption.S3_MANAGED
+      encryption: s3.BucketEncryption.S3_MANAGED
     });
 
-    // Source (https://docs.aws.amazon.com/cdk/api/latest/docs/aws-codepipeline-actions-readme.html)
+    // Source
     const sourceArtifacts = new codepipeline.Artifact();
-    const sourceAction: GitHubSourceAction = new codepipeline_actions.GitHubSourceAction({
+    const sourceAction = new codepipelineActions.GitHubSourceAction({
       actionName: 'Source',
       owner: ssm.StringParameter.fromStringParameterName(this, 'GithubUsername', 'github_username').stringValue,
       repo: 'aws-serverless-app-sam-cdk',
-      oauthToken: cdk.SecretValue.secretsManager('github_token', {jsonField: 'github_token'}),
+      oauthToken: SecretValue.secretsManager('github_token', {jsonField: 'github_token'}),
       output: sourceArtifacts,
-      branch: 'master',
-      trigger: codepipeline_actions.GitHubTrigger.WEBHOOK,
+      branch: 'main',
+      trigger: codepipelineActions.GitHubTrigger.WEBHOOK,
       variablesNamespace: 'SourceVariables'
     });
 
@@ -41,7 +41,7 @@ export class PipelineStack extends cdk.Stack {
     const buildProject = new codebuild.PipelineProject(this, 'CiCdBuild', {
       buildSpec: codebuild.BuildSpec.fromSourceFilename('pipeline/buildspec.json'),
       environment: {
-        buildImage: codebuild.LinuxBuildImage.STANDARD_3_0
+        buildImage: codebuild.LinuxBuildImage.STANDARD_7_0
       },
       projectName: 'aws-serverless-app-build'
     });
@@ -49,7 +49,7 @@ export class PipelineStack extends cdk.Stack {
     appArtifactBucket.grantPut(buildProject);
 
     const buildArtifacts = new codepipeline.Artifact();
-    const buildAction: CodeBuildAction = new codepipeline_actions.CodeBuildAction({
+    const buildAction = new codepipelineActions.CodeBuildAction({
       actionName: 'Build',
       input: sourceArtifacts,
       environmentVariables: {
@@ -65,13 +65,13 @@ export class PipelineStack extends cdk.Stack {
     const testProject = new codebuild.PipelineProject(this, 'CiCdTest', {
       buildSpec: codebuild.BuildSpec.fromSourceFilename('pipeline/buildspec-test.json'),
       environment: {
-        buildImage: codebuild.LinuxBuildImage.STANDARD_3_0,
+        buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
         privileged: true
       },
       projectName: 'aws-serverless-app-test'
     });
 
-    const testAction: CodeBuildAction = new codepipeline_actions.CodeBuildAction({
+    const testAction = new codepipelineActions.CodeBuildAction({
       actionName: 'Test',
       input: sourceArtifacts,
       environmentVariables: {
@@ -85,21 +85,21 @@ export class PipelineStack extends cdk.Stack {
     const deployProject = new codebuild.PipelineProject(this, 'CiCdDeploy', {
       buildSpec: codebuild.BuildSpec.fromSourceFilename('pipeline/buildspec-deploy.json'),
       environment: {
-        buildImage: codebuild.LinuxBuildImage.STANDARD_3_0
+        buildImage: codebuild.LinuxBuildImage.STANDARD_7_0
       },
       projectName: 'aws-serverless-app-deploy'
     });
 
     appArtifactBucket.grantRead(deployProject);
-    deployProject.role?.addManagedPolicy({managedPolicyArn: 'arn:aws:iam::aws:policy/AWSCloudFormationFullAccess'});
-    deployProject.role?.addManagedPolicy({managedPolicyArn: 'arn:aws:iam::aws:policy/AmazonSQSFullAccess'});
-    deployProject.role?.addManagedPolicy({managedPolicyArn: 'arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess'});
-    deployProject.role?.addManagedPolicy({managedPolicyArn: 'arn:aws:iam::aws:policy/AWSLambda_FullAccess'});
-    deployProject.role?.addManagedPolicy({managedPolicyArn: 'arn:aws:iam::aws:policy/IAMFullAccess'});
-    deployProject.role?.addManagedPolicy({managedPolicyArn: 'arn:aws:iam::aws:policy/AWSCodeDeployFullAccess'});
+    deployProject.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCloudFormationFullAccess'));
+    deployProject.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSQSFullAccess'));
+    deployProject.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonDynamoDBFullAccess'));
+    deployProject.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSLambda_FullAccess'));
+    deployProject.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('IAMFullAccess'));
+    deployProject.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSCodeDeployFullAccess'));
 
     // Deploy to staging
-    const deployToStagingAction: CodeBuildAction = new codepipeline_actions.CodeBuildAction({
+    const deployToStagingAction = new codepipelineActions.CodeBuildAction({
       actionName: 'Deploy',
       input: sourceArtifacts,
       environmentVariables: {
@@ -111,13 +111,13 @@ export class PipelineStack extends cdk.Stack {
     });
 
     // Deploy to production
-    const manualApprovalAction: ManualApprovalAction = new codepipeline_actions.ManualApprovalAction({
+    const manualApprovalAction = new codepipelineActions.ManualApprovalAction({
       actionName: 'Review',
       additionalInformation: 'Ensure AWS Lambda function works correctly in Staging and release date is agreed with Product Owners',
       runOrder: 1
     });
 
-    const deployToProductionAction: CodeBuildAction = new codepipeline_actions.CodeBuildAction({
+    const deployToProductionAction = new codepipelineActions.CodeBuildAction({
       actionName: 'Deploy',
       input: sourceArtifacts,
       environmentVariables: {

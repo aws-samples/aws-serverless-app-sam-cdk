@@ -1,8 +1,11 @@
-const sdk = require('aws-sdk');
+const { CodeDeployClient, PutLifecycleEventHookExecutionStatusCommand } = require('@aws-sdk/client-codedeploy');
+const { DeleteItemCommand, DynamoDBClient, GetItemCommand } = require('@aws-sdk/client-dynamodb');
+const { InvokeCommand, LambdaClient } = require('@aws-sdk/client-lambda');
 
-const cdClient = new sdk.CodeDeploy({apiVersion: '2014-10-06'});
-const lambdaClient = new sdk.Lambda();
-const ddbClient = new sdk.DynamoDB({apiVersion: '2012-08-10'});
+const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
+const cdClient = new CodeDeployClient({ region });
+const lambdaClient = new LambdaClient({ region });
+const ddbClient = new DynamoDBClient({ region });
 
 const tableName = process.env.TABLE;
 
@@ -23,7 +26,7 @@ exports.handler = async event => {
             InvocationType: 'Event',
             Payload: JSON.stringify(sqsEvent)
         };
-        await lambdaClient.invoke(lParams).promise();
+        await lambdaClient.send(new InvokeCommand(lParams));
         
         const ddbParams = {
             TableName: tableName,
@@ -33,7 +36,7 @@ exports.handler = async event => {
 
         console.log('DynamoDB getItem params', JSON.stringify(ddbParams, null, 2));
         await wait();
-        const {Item} = await ddbClient.getItem(ddbParams).promise();
+        const {Item} = await ddbClient.send(new GetItemCommand(ddbParams));
         console.log('DynamoDB item', JSON.stringify(Item, null, 2));
 
         if (!Item) {
@@ -41,7 +44,7 @@ exports.handler = async event => {
         }
 
         delete ddbParams.ConsistentRead;
-        await ddbClient.deleteItem(ddbParams).promise();
+        await ddbClient.send(new DeleteItemCommand(ddbParams));
         console.log('Test DynamoDB item deleted');
 
     } catch (e) {
@@ -55,7 +58,7 @@ exports.handler = async event => {
         status
     };
 
-    return await cdClient.putLifecycleEventHookExecutionStatus(cdParams).promise();
+    return await cdClient.send(new PutLifecycleEventHookExecutionStatusCommand(cdParams));
 };
 
 function wait(ms) {

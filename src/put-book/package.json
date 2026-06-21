@@ -3,20 +3,29 @@
   "version": "1.0.0",
   "description": "AWS Lambda function source code that inserts a book in a DynamoDB table",
   "main": "index.js",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
   "scripts": {
     "test": "TABLE=books mocha ./tests/unit/*.spec.js --recursive",
-    "e2e-test": "mocha ./tests/e2e/*.spec.js --recursive"
+    "e2e-test": "TABLE=books E2E_TEST=true mocha ./tests/e2e/*.spec.js --recursive"
   },
   "author": "Amazon Web Services",
   "license": "Apache 2.0",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1069.0"
+  },
+  "overrides": {
+    "diff": "^9.0.0",
+    "js-yaml": "^4.2.0",
+    "serialize-javascript": "^7.0.5"
+  },
   "devDependencies": {
-    "aws-sdk": "^2.1354.0",
-    "chai": "^4.2.0",
-    "chai-as-promised": "^7.1.1",
-    "mocha": "^9.2.2",
-    "path-parse": ">=1.0.7",
+    "chai": "^4.5.0",
+    "mocha": "^11.7.6",
     "proxyquire": "^2.1.3",
-    "sinon": "^9.0.0",
-    "sinon-chai": "^3.5.0"
+    "sinon": "^22.0.0",
+    "sinon-chai": "^3.7.0"
   }
 }

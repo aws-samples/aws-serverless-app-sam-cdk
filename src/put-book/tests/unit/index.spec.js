@@ -8,20 +8,23 @@ chai.use(sinonChai);
 
 describe('put book tests', () => {
   let handler;
-  let dynamoDBstub;
+  let dynamoDBClientStub;
+  let putItemCommandStub;
+  let sendStub;
   let sandbox;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
 
-    dynamoDBstub = {
-      putItem: sandbox.stub().returns({promise: () => Promise.resolve()})
-    };
-
-    const mockAws = {DynamoDB: sandbox.stub().returns(dynamoDBstub)};
+    sendStub = sandbox.stub().resolves();
+    dynamoDBClientStub = sandbox.stub().returns({send: sendStub});
+    putItemCommandStub = sandbox.stub().callsFake(input => ({input}));
 
     handler = proxyquire('../../index', {
-      'aws-sdk': mockAws
+      '@aws-sdk/client-dynamodb': {
+        DynamoDBClient: dynamoDBClientStub,
+        PutItemCommand: putItemCommandStub
+      }
     }).handler;
   });
 
@@ -34,12 +37,13 @@ describe('put book tests', () => {
     await handler(event);
 
     // Assert
-    expect(dynamoDBstub.putItem).to.have.been.calledWith({
+    expect(putItemCommandStub).to.have.been.calledWith({
       TableName: 'books', 
       Item: {
         author: { S: 'John Doe' }, isbn: { S: '1' }, reviews: { N: '4' }, title: { S: 'Best seller' }, year: { S: '1999' }
       }
     });
+    expect(sendStub).to.have.been.calledOnce;
   });
 
   afterEach(() => sandbox.restore());

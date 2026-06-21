@@ -12,9 +12,9 @@ Application is responsible for storing a message in a DynamoDB table through an 
 
 ## Requirements
 
-* Node.js 12 or above
-* npm 6 or above
-* [AWS SAM CLI 0.40.0](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html). It requires you to set AWS credentials so that it can make calls to AWS services on your behalf.
+* Node.js 24.x
+* npm 11.x
+* The latest [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html). It requires you to set AWS credentials so that it can make calls to AWS services on your behalf.
 * Set the AWS region you want to deploy this application to. You can do so through `aws configure` or `AWS_DEFAULT_REGION` environment variable.
 
 ## Project Structure
@@ -54,7 +54,7 @@ These two commands will be usesd in both `Build` and `Deploy` steps of our pipel
 
 ## Testing your lambda locally
 
-Create a docker network and run a local dynamodb container in it:
+Create a container network and run a local DynamoDB container in it. If you use Finch locally, replace `docker` with `finch` in the commands below:
 
 ```sh
 docker network create my-network
@@ -113,7 +113,7 @@ To get it provisioned follow these steps:
 * First, install AWS CDK tools:
 
   ```sh
-  npm install -g aws-cdk
+  npm install -g aws-cdk@latest
   ```
 
 * Then, fetch dependencies and provision pipeline:
@@ -136,6 +136,9 @@ NOTES:
 * To successfully connect to Github:
   * Username is provided through a AWS SSM parameter called `github_username`,
   * Secret is provided through AWS Secrets Manager. Both secret name and field are called `github_token`.
+    * You can create a GitHub personal access token from `Settings > Developer settings > Personal access tokens`.
+      * For a fine-grained token, grant access to this repository and allow `Metadata: Read-only`, `Contents: Read-only`, and `Webhooks: Read and write`.
+      * For a classic token, use `repo` for private repositories, or `public_repo` plus `admin:repo_hook` for public repositories.
 
 ## Want to contribute?
 
