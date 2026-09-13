@@ -18,7 +18,7 @@
   },
   "overrides": {
     "diff": "^9.0.0",
-    "js-yaml": "^4.2.0",
+    "js-yaml": "^4.3.2",
     "serialize-javascript": "^7.0.5"
   },
   "devDependencies": {
